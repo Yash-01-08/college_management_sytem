@@ -96,6 +96,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSearch, onOpenAIChat }) =>
 
         {/* Right Action Icons & Role Switcher */}
         <div className="flex items-center gap-2.5">
+          {/* Server Connection Tester Link */}
+          <Link
+            href="/server-test"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs font-semibold transition-all shadow-xs"
+            title="Test Node.js Backend Connection & File Structure"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            <span className="hidden sm:inline">Server Status</span>
+          </Link>
+
           {/* AI Assistant Button */}
           <button
             onClick={onOpenAIChat}
