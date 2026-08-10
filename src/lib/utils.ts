@@ -1,0 +1,67 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+export function formatDate(dateString: string): string {
+  try {
+    const d = new Date(dateString);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+}
+
+export function formatTime(timeString: string): string {
+  try {
+    const d = new Date(timeString);
+    return d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return timeString;
+  }
+}
+
+export function exportToCSV(filename: string, rows: object[]) {
+  if (!rows || !rows.length) return;
+  const separator = ",";
+  const keys = Object.keys(rows[0]);
+  const csvContent =
+    keys.join(separator) +
+    "\n" +
+    rows
+      .map((row) => {
+        return keys
+          .map((k) => {
+            let cell = (row as Record<string, unknown>)[k] ?? "";
+            cell = cell instanceof Date ? cell.toLocaleString() : cell.toString();
+            cell = cell.replace(/"/g, '""');
+            if (cell.search(/("|,|\n)/g) >= 0) {
+              cell = `"${cell}"`;
+            }
+            return cell;
+          })
+          .join(separator);
+      })
+      .join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
