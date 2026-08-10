@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/common/Navbar";
 import { GlobalSearch } from "@/components/common/GlobalSearch";
-import { AIChatbot } from "@/components/common/AIChatbot";
+
 
 export default function LandingPage() {
   const [searchOpen, setSearchOpen] = useState(false);
