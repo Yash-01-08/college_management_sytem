@@ -85,7 +85,7 @@ const registerStudent = async (req, res, next) => {
       role: "student", // forced, regardless of what the client sent
       scholarNumber, // forced, regardless of what the client sent
     });
-
+console.log("Registered student:", student);
     generateTokenAndSetCookie(res, {
       userId: student._id,
       role: student.role,
