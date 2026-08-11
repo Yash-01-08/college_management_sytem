@@ -4,10 +4,10 @@
   "private": true,
   "description": "Smart Campus Management Platform - React Frontend + Express Backend",
   "scripts": {
-    "start": "node server.js",
-    "server": "node server.js",
+    "start": "node server/server.js",
+    "server": "node server/server.js",
     "client": "npm --prefix client run dev",
-    "dev": "npx concurrently \"node server.js\" \"npm --prefix client run dev\""
+    "dev": "npx concurrently \"node server/server.js\" \"npm --prefix client run dev\""
   },
   "dependencies": {
     "axios": "^1.7.7",
