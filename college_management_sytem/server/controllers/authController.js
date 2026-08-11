@@ -24,10 +24,7 @@ const registerStudent = async (req, res, next) => {
       dateOfBirth,
     } = req.body;
 
-    // NOTE: `role` and `scholarNumber` are intentionally NEVER read from
-    // req.body. Even if the client sends them, they are ignored below.
-    // This guarantees public registration can only ever create a student
-    // with a backend-generated scholar number.
+   
 
     if (
       !name ||
@@ -54,8 +51,8 @@ const registerStudent = async (req, res, next) => {
       });
     }
 
-    // Check for existing email / phone up front for clearer error messages
-    // (the schema-level unique index is still the ultimate safety net).
+
+
     const existingEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingEmail) {
       return res.status(400).json({
@@ -72,7 +69,7 @@ const registerStudent = async (req, res, next) => {
       });
     }
 
-    // Backend-generated, never trusted from the client.
+    
     const scholarNumber = await generateScholarNumber(User);
 
     const student = await User.create({

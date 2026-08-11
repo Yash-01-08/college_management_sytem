@@ -12,11 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CORS: the React frontend runs on a different origin, so we must
-// explicitly allow it and enable credentials so the HTTP-only cookie
-// is sent/received cross-origin. `origin: "*"` is NOT allowed when
-// `credentials: true` is set (browsers will reject it), so we use the
-// specific CLIENT_URL from the environment instead.
+
 app.use(
   cors({
     origin: process.env.CLIENT_URL,

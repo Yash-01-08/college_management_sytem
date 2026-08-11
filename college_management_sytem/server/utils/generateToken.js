@@ -24,9 +24,7 @@ const generateTokenAndSetCookie = (res, { userId, role, scholarNumber }) => {
 
   const isProduction = process.env.NODE_ENV === "production";
 
-  // maxAge in milliseconds. Kept in sync (roughly) with JWT_EXPIRES_IN.
-  // For simplicity we use a fixed 7-day cookie window; if you change
-  // JWT_EXPIRES_IN significantly, update this value too.
+  
   const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 
   res.cookie("token", token, {
