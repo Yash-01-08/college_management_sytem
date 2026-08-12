@@ -536,8 +536,18 @@ const createFee = async (req, res, next) => {
 const updateFee = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const fee = await Fee.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    const fee = await Fee.findById(id);
     if (!fee) return res.status(404).json({ success: false, message: "Fee record not found" });
+
+    if (req.body.amount !== undefined) fee.amount = Number(req.body.amount);
+    if (req.body.paidAmount !== undefined) fee.paidAmount = Number(req.body.paidAmount);
+    if (req.body.dueDate) fee.dueDate = req.body.dueDate;
+    if (req.body.academicYear) fee.academicYear = req.body.academicYear;
+    if (req.body.semester) fee.semester = req.body.semester;
+    if (req.body.transactionId !== undefined) fee.transactionId = req.body.transactionId;
+    if (req.body.status) fee.status = req.body.status;
+
+    await fee.save();
     return res.status(200).json({ success: true, message: "Fee updated successfully", data: { fee } });
   } catch (error) {
     next(error);

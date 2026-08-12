@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Course = require("../models/Course");
 const Subject = require("../models/Subject");
@@ -226,7 +227,7 @@ const getEvents = async (req, res, next) => {
       $or: [{ department: null }],
     };
 
-    if (req.user.department) {
+    if (req.user.department && mongoose.Types.ObjectId.isValid(req.user.department)) {
       filter.$or.push({ department: req.user.department });
     }
 
