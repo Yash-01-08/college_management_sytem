@@ -1,7 +1,7 @@
 const express = require("express");
 const {
-  registerStudent,
-  loginStudent,
+  register,
+  login,
   logout,
   getCurrentUser,
 } = require("../controllers/authController");
@@ -10,8 +10,8 @@ const authMiddleware = require("../middleware/authMiddleware");
 const router = express.Router();
 
 // Public routes
-router.post("/register", registerStudent);
-router.post("/login", loginStudent);
+router.post("/register", register);
+router.post("/login", login);
 router.post("/logout", logout);
 
 // Protected route

@@ -1,26 +1,10 @@
-// seed.js
-const mongoose = require('mongoose');
-const User = require('./models/User');
+const seedAdmin = require("./seed/seedAdmin");
 
-async function seedAdmin() {
-  try {
-    await mongoose.connect('mongodb://127.0.0.1:27017/college_management');
-    console.log('Connected to MongoDB...');
-
-    await User.create({
-      name: 'Admin',
-      email: 'admin@example.com',
-      phone: '9999999999',
-      password: 'password123',
-      role: 'admin'
-    });
-
-    console.log('Document inserted successfully!');
+seedAdmin()
+  .then(() => {
     process.exit(0);
-  } catch (error) {
-    console.error('Error inserting document:', error);
+  })
+  .catch((err) => {
+    console.error("Seed failed:", err);
     process.exit(1);
-  }
-}
-
-seedAdmin();
+  });
