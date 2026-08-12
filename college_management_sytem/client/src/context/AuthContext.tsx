@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User, AuthContextType } from "../types/auth";
-import { getCurrentUser, loginStudent, logoutUser } from "../services/authService";
+import { User, UserRole } from "../types";
+import { getCurrentUser, loginUser, logoutUser } from "../services/authService";
+
+export interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (credentials: { email: string; password: string; role: UserRole }) => Promise<User>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -11,17 +20,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const checkAuth = async () => {
     try {
-      const data = await getCurrentUser();
-      if (data && data.user) {
-        setUser(data.user);
+      setIsLoading(true);
+      const res = await getCurrentUser();
+      if (res && res.user) {
+        setUser(res.user);
+        setIsAuthenticated(true);
+      } else if (res && res.data && res.data.user) {
+        setUser(res.data.user);
         setIsAuthenticated(true);
       } else {
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch {
-      // 401 Unauthorized or network error on /me:
-      // User is not logged in. Silent update without error popups.
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -31,21 +42,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     checkAuth();
+
+    // Listen for unauthorized 401 custom events from axios interceptor
+    const handleUnauthorized = () => {
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+    window.addEventListener("cms_unauthorized", handleUnauthorized);
+    return () => {
+      window.removeEventListener("cms_unauthorized", handleUnauthorized);
+    };
   }, []);
 
-  const login = async (identifier: string, password: string) => {
-    const data = await loginStudent(identifier, password);
-    if (data && data.user) {
-      setUser(data.user);
-      setIsAuthenticated(true);
+  const login = async (credentials: { email: string; password: string; role: UserRole }): Promise<User> => {
+    const res = await loginUser(credentials);
+    const loggedUser = res.user || (res.data && res.data.user);
+    if (!loggedUser) {
+      throw new Error(res.message || "Login failed. Please check credentials and role.");
     }
+    setUser(loggedUser);
+    setIsAuthenticated(true);
+    return loggedUser;
   };
 
   const logout = async () => {
     try {
       await logoutUser();
     } catch (err) {
-      console.error("Logout request error:", err);
+      console.error("Logout error:", err);
     } finally {
       setUser(null);
       setIsAuthenticated(false);
