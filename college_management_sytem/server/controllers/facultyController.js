@@ -1,0 +1,383 @@
+const User = require("../models/User");
+const TeachingAssignment = require("../models/TeachingAssignment");
+const Enrollment = require("../models/Enrollment");
+const Attendance = require("../models/Attendance");
+const Result = require("../models/Result");
+const Timetable = require("../models/Timetable");
+const Event = require("../models/Event");
+const Notification = require("../models/Notification");
+
+// GET /api/faculty/profile
+const getProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).populate("department", "name code");
+
+    return res.status(200).json({
+      success: true,
+      message: "Faculty profile fetched successfully",
+      data: {
+        user: user.toSafeObject(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/subjects
+const getAssignedSubjects = async (req, res, next) => {
+  try {
+    const assignments = await TeachingAssignment.find({ faculty: req.user._id })
+      .populate({
+        path: "subject",
+        select: "name code credits type semester",
+        populate: { path: "course", select: "name code" },
+      })
+      .populate("course", "name code");
+
+    return res.status(200).json({
+      success: true,
+      message: "Assigned subjects fetched successfully",
+      data: { assignments },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/students
+const getStudents = async (req, res, next) => {
+  try {
+    // Find all subject IDs assigned to this faculty
+    const assignments = await TeachingAssignment.find({ faculty: req.user._id });
+    const subjectIds = assignments.map((a) => a.subject);
+
+    const enrollments = await Enrollment.find({ subject: { $in: subjectIds } })
+      .populate("student", "name email phone scholarNumber batch semester course department")
+      .populate("subject", "name code");
+
+    return res.status(200).json({
+      success: true,
+      message: "Students fetched successfully",
+      data: { enrollments },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/attendance
+const getAttendance = async (req, res, next) => {
+  try {
+    const { subjectId, date } = req.query;
+    const query = { faculty: req.user._id };
+
+    if (subjectId) query.subject = subjectId;
+    if (date) {
+      const d = new Date(date);
+      const start = new Date(d.setHours(0, 0, 0, 0));
+      const end = new Date(d.setHours(23, 59, 59, 999));
+      query.date = { $gte: start, $lte: end };
+    }
+
+    const attendance = await Attendance.find(query)
+      .populate("student", "name scholarNumber email")
+      .populate("subject", "name code")
+      .sort({ date: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Attendance records fetched successfully",
+      data: { attendance },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/faculty/attendance
+const markAttendance = async (req, res, next) => {
+  try {
+    const { studentId, subjectId, date, status, remarks } = req.body;
+
+    if (!studentId || !subjectId || !date || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "studentId, subjectId, date, and status are required",
+      });
+    }
+
+    // CRITICAL SECURITY CHECK: Verify faculty is assigned to this subject
+    const isAssigned = await TeachingAssignment.findOne({
+      faculty: req.user._id,
+      subject: subjectId,
+    });
+
+    if (!isAssigned) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to mark attendance for this subject",
+      });
+    }
+
+    const attendanceDate = new Date(date);
+
+    // Prevent duplicate attendance for student, subject, and date
+    const existing = await Attendance.findOne({
+      student: studentId,
+      subject: subjectId,
+      date: attendanceDate,
+    });
+
+    if (existing) {
+      existing.status = status;
+      if (remarks !== undefined) existing.remarks = remarks;
+      await existing.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Attendance updated successfully",
+        data: { attendance: existing },
+      });
+    }
+
+    const attendance = await Attendance.create({
+      student: studentId,
+      subject: subjectId,
+      faculty: req.user._id,
+      date: attendanceDate,
+      status,
+      remarks: remarks || "",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Attendance marked successfully",
+      data: { attendance },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/faculty/attendance/:id
+const updateAttendance = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, remarks } = req.body;
+
+    const attendance = await Attendance.findById(id);
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found",
+      });
+    }
+
+    // Verify faculty assignment for subject
+    const isAssigned = await TeachingAssignment.findOne({
+      faculty: req.user._id,
+      subject: attendance.subject,
+    });
+
+    if (!isAssigned && String(attendance.faculty) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update attendance for this subject",
+      });
+    }
+
+    if (status) attendance.status = status;
+    if (remarks !== undefined) attendance.remarks = remarks;
+    await attendance.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Attendance updated successfully",
+      data: { attendance },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/results
+const getResults = async (req, res, next) => {
+  try {
+    const assignments = await TeachingAssignment.find({ faculty: req.user._id });
+    const subjectIds = assignments.map((a) => a.subject);
+
+    const results = await Result.find({ subject: { $in: subjectIds } })
+      .populate("student", "name scholarNumber email")
+      .populate("subject", "name code");
+
+    return res.status(200).json({
+      success: true,
+      message: "Results fetched successfully",
+      data: { results },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/faculty/results
+const createResult = async (req, res, next) => {
+  try {
+    const { studentId, subjectId, semester, academicYear, internalMarks, externalMarks } = req.body;
+
+    if (!studentId || !subjectId || !semester || !academicYear) {
+      return res.status(400).json({
+        success: false,
+        message: "studentId, subjectId, semester, and academicYear are required",
+      });
+    }
+
+    // CRITICAL SECURITY CHECK: Verify faculty assignment
+    const isAssigned = await TeachingAssignment.findOne({
+      faculty: req.user._id,
+      subject: subjectId,
+    });
+
+    if (!isAssigned) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to enter results for this subject",
+      });
+    }
+
+    const result = await Result.create({
+      student: studentId,
+      subject: subjectId,
+      semester: Number(semester),
+      academicYear,
+      internalMarks: Number(internalMarks) || 0,
+      externalMarks: Number(externalMarks) || 0,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Result created successfully",
+      data: { result },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/faculty/results/:id
+const updateResult = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { internalMarks, externalMarks, status } = req.body;
+
+    const result = await Result.findById(id);
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Result record not found",
+      });
+    }
+
+    // Verify faculty assignment
+    const isAssigned = await TeachingAssignment.findOne({
+      faculty: req.user._id,
+      subject: result.subject,
+    });
+
+    if (!isAssigned) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update results for this subject",
+      });
+    }
+
+    if (internalMarks !== undefined) result.internalMarks = Number(internalMarks);
+    if (externalMarks !== undefined) result.externalMarks = Number(externalMarks);
+    if (status) result.status = status;
+
+    await result.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Result updated successfully",
+      data: { result },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/timetable
+const getTimetable = async (req, res, next) => {
+  try {
+    const timetable = await Timetable.find({ faculty: req.user._id })
+      .populate("subject", "name code")
+      .populate("course", "name code")
+      .sort({ day: 1, startTime: 1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Teaching timetable fetched successfully",
+      data: { timetable },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/events
+const getEvents = async (req, res, next) => {
+  try {
+    const filter = {
+      isPublished: true,
+      $or: [{ department: null }],
+    };
+
+    if (req.user.department) {
+      filter.$or.push({ department: req.user.department });
+    }
+
+    const events = await Event.find(filter)
+      .populate("department", "name code")
+      .sort({ startDate: 1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Events fetched successfully",
+      data: { events },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/notifications
+const getNotifications = async (req, res, next) => {
+  try {
+    const notifications = await Notification.find({ recipient: req.user._id }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Notifications fetched successfully",
+      data: { notifications },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getProfile,
+  getAssignedSubjects,
+  getStudents,
+  getAttendance,
+  markAttendance,
+  updateAttendance,
+  getResults,
+  createResult,
+  updateResult,
+  getTimetable,
+  getEvents,
+  getNotifications,
+};

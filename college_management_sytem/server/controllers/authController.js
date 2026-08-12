@@ -3,44 +3,48 @@ const generateScholarNumber = require("../utils/generateScholarNumber");
 const generateTokenAndSetCookie = require("../utils/generateToken");
 
 const PHONE_REGEX = /^[6-9]\d{9}$/;
-const SCHOLAR_NUMBER_REGEX = /^\d{10}$/;
 
 /**
  * @route   POST /api/auth/register
- * @desc    Register a new STUDENT (public registration is student-only)
+ * @desc    Public registration for student, faculty, and coordinator (admin prohibited)
  * @access  Public
  */
-const registerStudent = async (req, res, next) => {
+const register = async (req, res, next) => {
   try {
     const {
       name,
       email,
-      password,
       phone,
+      password,
+      role = "student",
       department,
       course,
       semester,
       batch,
       dateOfBirth,
+      scholarNumber: customScholarNumber,
     } = req.body;
 
-   
-
-    if (
-      !name ||
-      !email ||
-      !password ||
-      !phone ||
-      !department ||
-      !course ||
-      !semester ||
-      !batch ||
-      !dateOfBirth
-    ) {
+    // Reject admin registration via public endpoint
+    if (role === "admin") {
       return res.status(400).json({
         success: false,
-        message:
-          "name, email, password, phone, department, course, semester, batch and dateOfBirth are all required",
+        message: "Admin registration is not allowed through public endpoint",
+      });
+    }
+
+    const allowedRoles = ["student", "faculty", "coordinator"];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: `Role must be one of: ${allowedRoles.join(", ")}`,
+      });
+    }
+
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, phone, and password are required",
       });
     }
 
@@ -51,7 +55,12 @@ const registerStudent = async (req, res, next) => {
       });
     }
 
-
+    if (!PHONE_REGEX.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid 10-digit phone number",
+      });
+    }
 
     const existingEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingEmail) {
@@ -69,33 +78,46 @@ const registerStudent = async (req, res, next) => {
       });
     }
 
-    
-    const scholarNumber = await generateScholarNumber(User);
-
-    const student = await User.create({
+    const userData = {
       name,
       email,
       password,
       phone,
-      department,
-      course,
-      semester,
-      batch,
-      dateOfBirth,
-      role: "student", // forced, regardless of what the client sent
-      scholarNumber, // forced, regardless of what the client sent
-    });
-console.log("Registered student:", student);
+      role,
+      department: department || undefined,
+    };
+
+    if (role === "student") {
+      if (!department || !course || !semester || !batch || !dateOfBirth) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "department, course, semester, batch, and dateOfBirth are required for student registration",
+        });
+      }
+      userData.department = department;
+      userData.course = course;
+      userData.semester = Number(semester);
+      userData.batch = batch;
+      userData.dateOfBirth = dateOfBirth;
+      userData.scholarNumber =
+        customScholarNumber || (await generateScholarNumber(User));
+    }
+
+    const user = await User.create(userData);
+
     generateTokenAndSetCookie(res, {
-      userId: student._id,
-      role: student.role,
-      scholarNumber: student.scholarNumber,
+      userId: user._id,
+      role: user.role,
+      scholarNumber: user.scholarNumber,
     });
 
     return res.status(201).json({
       success: true,
       message: "Registration successful",
-      user: student.toSafeObject(),
+      data: {
+        user: user.toSafeObject(),
+      },
     });
   } catch (error) {
     next(error);
@@ -104,56 +126,47 @@ console.log("Registered student:", student);
 
 /**
  * @route   POST /api/auth/login
- * @desc    Log in a student using phone number OR scholar number
+ * @desc    Log in for all roles (email/identifier + password + role)
  * @access  Public
  */
-const loginStudent = async (req, res, next) => {
+const login = async (req, res, next) => {
   try {
-    const { identifier, password } = req.body;
+    const { email, identifier, password, role: requestedRole } = req.body;
+    const loginId = email || identifier;
 
-    if (!identifier || !password) {
+    if (!loginId || !password) {
       return res.status(400).json({
         success: false,
-        message: "identifier and password are required",
+        message: "Email/identifier and password are required",
       });
     }
 
-    const trimmedIdentifier = String(identifier).trim();
+    const trimmedIdentifier = String(loginId).trim().toLowerCase();
 
-    let query;
-    if (PHONE_REGEX.test(trimmedIdentifier)) {
-      query = { phone: trimmedIdentifier, role: "student" };
-    } else if (SCHOLAR_NUMBER_REGEX.test(trimmedIdentifier)) {
-      query = { scholarNumber: trimmedIdentifier, role: "student" };
-    } else {
-      // Doesn't look like either a valid phone or scholar number.
-      // Respond generically to avoid hinting at the expected format
-      // for enumeration purposes.
+    // Query user by email, phone, or scholarNumber
+    const user = await User.findOne({
+      $or: [
+        { email: trimmedIdentifier },
+        { phone: loginId },
+        { scholarNumber: loginId },
+      ],
+    }).select("+password");
+
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
     }
 
-    const student = await User.findOne(query).select("+password");
-
-    if (!student) {
+    if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Account is inactive",
       });
     }
 
-    if (!student.isActive) {
-      // Deliberately generic — do not reveal that the account exists
-      // but is deactivated, to avoid account enumeration.
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    const isPasswordCorrect = await student.comparePassword(password);
+    const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
       return res.status(401).json({
         success: false,
@@ -161,16 +174,26 @@ const loginStudent = async (req, res, next) => {
       });
     }
 
+    // Role check: backend authorization is the final authority
+    if (requestedRole && requestedRole !== user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "Invalid role for this account",
+      });
+    }
+
     generateTokenAndSetCookie(res, {
-      userId: student._id,
-      role: student.role,
-      scholarNumber: student.scholarNumber,
+      userId: user._id,
+      role: user.role,
+      scholarNumber: user.scholarNumber,
     });
 
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      user: student.toSafeObject(),
+      data: {
+        user: user.toSafeObject(),
+      },
     });
   } catch (error) {
     next(error);
@@ -195,7 +218,7 @@ const logout = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: "Logout successful",
+      message: "Logged out successfully",
     });
   } catch (error) {
     next(error);
@@ -209,11 +232,11 @@ const logout = async (req, res, next) => {
  */
 const getCurrentUser = async (req, res, next) => {
   try {
-    // req.user is attached by authMiddleware
     return res.status(200).json({
       success: true,
-      message: "Current user fetched successfully",
-      user: req.user.toSafeObject(),
+      data: {
+        user: req.user.toSafeObject(),
+      },
     });
   } catch (error) {
     next(error);
@@ -221,8 +244,11 @@ const getCurrentUser = async (req, res, next) => {
 };
 
 module.exports = {
-  registerStudent,
-  loginStudent,
+  register,
+  login,
   logout,
   getCurrentUser,
+  // Backwards compatibility aliases if needed internally
+  registerStudent: register,
+  loginStudent: login,
 };

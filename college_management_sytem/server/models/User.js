@@ -155,8 +155,7 @@ userSchema.pre("save", async function (next) {
 
 // ----- Instance method: compare a plaintext password to the hash -----
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  // `this.password` is only available here if the query explicitly used
-  // .select("+password") when fetching the document.
+
   return bcrypt.compare(candidatePassword, this.password);
 };
 
