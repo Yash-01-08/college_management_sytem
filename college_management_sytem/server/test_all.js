@@ -481,6 +481,19 @@ async function runTests() {
   const resStudentNotif = await request("GET", "/api/student/notifications", null, studentCookie);
   console.log("-> SUCCESS: Student fetched notifications:", resStudentNotif.body.data.notifications[0].title);
 
+  console.log("\n[TEST 9] Testing Phase 3 Role-Based Dashboard APIs...");
+  const resStudentDash = await request("GET", "/api/student/dashboard", null, studentCookie);
+  console.log("-> SUCCESS: Student Dashboard metrics fetched. Attendance:", resStudentDash.body.data.metrics.attendancePercentage + "%");
+
+  const resFacultyDash = await request("GET", "/api/faculty/dashboard", null, facultyCookie);
+  console.log("-> SUCCESS: Faculty Dashboard metrics fetched. Assigned Subjects:", resFacultyDash.body.data.metrics.assignedSubjectsCount);
+
+  const resCoordDash = await request("GET", "/api/coordinator/dashboard", null, coordinatorCookie);
+  console.log("-> SUCCESS: Coordinator Dashboard metrics fetched. Departments:", resCoordDash.body.data.metrics.totalDepartments);
+
+  const resAdminDash = await request("GET", "/api/admin/dashboard", null, adminCookie);
+  console.log("-> SUCCESS: Admin Dashboard metrics fetched. Total Users:", resAdminDash.body.data.metrics.totalStudents + resAdminDash.body.data.metrics.totalFaculty);
+
   console.log("\n=======================================================");
   console.log("ALL TEST CASES PASSED SUCCESSFULLY!");
   console.log("=======================================================\n");

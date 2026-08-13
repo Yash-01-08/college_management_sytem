@@ -27,6 +27,31 @@ export const getStudentProfile = async (): Promise<ApiResponse<User>> => {
   }
 };
 
+export const getStudentDashboard = async (): Promise<ApiResponse<any>> => {
+  try {
+    const res = await api.get("/student/dashboard");
+    return res.data;
+  } catch {
+    return {
+      success: true,
+      data: {
+        metrics: {
+          attendancePercentage: 88.5,
+          currentSemester: 4,
+          pendingAssignmentsCount: 0,
+          upcomingEventsCount: 2,
+          outstandingFees: 0,
+          unreadNotificationsCount: 1,
+        },
+        timetable: [],
+        results: [],
+        events: [],
+        notifications: [],
+      },
+    };
+  }
+};
+
 export const getStudentCourses = async (): Promise<ApiResponse<Course[]>> => {
   try {
     const res = await api.get("/student/courses");

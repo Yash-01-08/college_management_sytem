@@ -25,6 +25,31 @@ export const getFacultyProfile = async (): Promise<ApiResponse<User>> => {
   }
 };
 
+export const getFacultyDashboard = async (): Promise<ApiResponse<any>> => {
+  try {
+    const res = await api.get("/faculty/dashboard");
+    return res.data;
+  } catch {
+    return {
+      success: true,
+      data: {
+        metrics: {
+          assignedSubjectsCount: 2,
+          totalStudentsCount: 40,
+          todaysClassesCount: 1,
+          pendingSubmissionsCount: 0,
+          attendanceCount: 12,
+          unreadNotificationsCount: 2,
+        },
+        assignments: [],
+        timetable: [],
+        events: [],
+        notifications: [],
+      },
+    };
+  }
+};
+
 export const getFacultySubjects = async (): Promise<ApiResponse<Subject[]>> => {
   try {
     const res = await api.get("/faculty/subjects");

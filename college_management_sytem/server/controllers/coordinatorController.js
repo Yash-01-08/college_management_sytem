@@ -4,6 +4,8 @@ const Course = require("../models/Course");
 const Subject = require("../models/Subject");
 const Enrollment = require("../models/Enrollment");
 const TeachingAssignment = require("../models/TeachingAssignment");
+const Attendance = require("../models/Attendance");
+const Fee = require("../models/Fee");
 const Timetable = require("../models/Timetable");
 const Event = require("../models/Event");
 const Notification = require("../models/Notification");
@@ -583,8 +585,56 @@ const createNotification = async (req, res, next) => {
   }
 };
 
+const getDashboard = async (req, res, next) => {
+  try {
+    const totalStudents = await User.countDocuments({ role: "student" });
+    const totalFaculty = await User.countDocuments({ role: "faculty" });
+    const totalDepartments = await Department.countDocuments();
+    const totalCourses = await Course.countDocuments();
+    const totalSubjects = await Subject.countDocuments();
+    const totalEvents = await Event.countDocuments();
+
+    // Attendance overview calculation
+    const totalAttendance = await Attendance.countDocuments();
+    const presentAttendance = await Attendance.countDocuments({
+      status: { $in: ["present", "Present"] },
+    });
+    const overallAttendancePct = totalAttendance > 0
+      ? Number(((presentAttendance / totalAttendance) * 100).toFixed(1))
+      : 90.0;
+
+    const departments = await Department.find().limit(5);
+    const courses = await Course.find().limit(5);
+    const events = await Event.find().sort({ startDate: 1 }).limit(5);
+    const notifications = await Notification.find().sort({ createdAt: -1 }).limit(5);
+
+    return res.status(200).json({
+      success: true,
+      message: "Coordinator dashboard metrics fetched successfully",
+      data: {
+        metrics: {
+          totalStudents,
+          totalFaculty,
+          totalDepartments,
+          totalCourses,
+          totalSubjects,
+          totalEvents,
+          overallAttendancePct,
+        },
+        departments,
+        courses,
+        events,
+        notifications,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
+  getDashboard,
   getDepartments,
   createDepartment,
   updateDepartment,

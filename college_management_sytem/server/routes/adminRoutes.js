@@ -3,6 +3,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/authorizeRoles");
 const {
   getUsers,
+  getDashboard,
   createUser,
   updateUser,
   deleteUser,
@@ -54,6 +55,9 @@ const router = express.Router();
 
 router.use(authMiddleware);
 router.use(authorizeRoles("admin"));
+
+// Dashboard
+router.get("/dashboard", getDashboard);
 
 // Users
 router.get("/users", getUsers);

@@ -261,8 +261,84 @@ const getNotifications = async (req, res, next) => {
   }
 };
 
+const getDashboard = async (req, res, next) => {
+  try {
+    const studentId = req.user._id;
+
+    // 1. Attendance records & percentage
+    const attendanceRecords = await Attendance.find({ student: studentId });
+    const totalAttendanceCount = attendanceRecords.length;
+    const presentCount = attendanceRecords.filter((a) => a.status === "present" || a.status === "Present").length;
+    const attendancePercentage = totalAttendanceCount > 0
+      ? Number(((presentCount / totalAttendanceCount) * 100).toFixed(1))
+      : 100;
+
+    // 2. Pending fees
+    const fees = await Fee.find({ student: studentId });
+    const outstandingFees = fees.reduce((sum, f) => sum + (f.dueAmount || 0), 0);
+
+    // 3. Unread notifications count
+    const unreadNotificationsCount = await Notification.countDocuments({
+      recipient: studentId,
+      isRead: false,
+    });
+
+    // 4. Recent notifications
+    const notifications = await Notification.find({ recipient: studentId })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // 5. Recent results
+    const results = await Result.find({ student: studentId })
+      .populate("subject", "name code")
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // 6. Timetable
+    const timetableQuery = {};
+    if (req.user.course) timetableQuery.course = req.user.course;
+    if (req.user.semester) timetableQuery.semester = req.user.semester;
+    const timetable = await Timetable.find(timetableQuery)
+      .populate("subject", "name code")
+      .populate("faculty", "name email")
+      .limit(6);
+
+    // 7. Upcoming events
+    const eventsFilter = {
+      isPublished: true,
+      $or: [{ department: null }],
+    };
+    if (req.user.department && mongoose.Types.ObjectId.isValid(req.user.department)) {
+      eventsFilter.$or.push({ department: req.user.department });
+    }
+    const events = await Event.find(eventsFilter).sort({ startDate: 1 }).limit(4);
+
+    return res.status(200).json({
+      success: true,
+      message: "Student dashboard metrics fetched successfully",
+      data: {
+        metrics: {
+          attendancePercentage,
+          currentSemester: req.user.semester || 1,
+          pendingAssignmentsCount: 0,
+          upcomingEventsCount: events.length,
+          outstandingFees,
+          unreadNotificationsCount,
+        },
+        timetable,
+        results,
+        events,
+        notifications,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
+  getDashboard,
   getCourses,
   getSubjects,
   getEnrollments,

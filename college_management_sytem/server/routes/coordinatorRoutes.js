@@ -3,6 +3,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/authorizeRoles");
 const {
   getProfile,
+  getDashboard,
   getDepartments,
   createDepartment,
   updateDepartment,
@@ -42,6 +43,7 @@ router.use(authMiddleware);
 router.use(authorizeRoles("coordinator", "admin"));
 
 router.get("/profile", getProfile);
+router.get("/dashboard", getDashboard);
 
 router.get("/departments", getDepartments);
 router.post("/departments", createDepartment);

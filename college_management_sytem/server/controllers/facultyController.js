@@ -368,8 +368,71 @@ const getNotifications = async (req, res, next) => {
   }
 };
 
+const getDashboard = async (req, res, next) => {
+  try {
+    const facultyId = req.user._id;
+
+    // 1. Assigned subjects count
+    const assignments = await TeachingAssignment.find({ faculty: facultyId })
+      .populate({
+        path: "subject",
+        select: "name code credits type semester",
+        populate: { path: "course", select: "name code" },
+      })
+      .populate("course", "name code");
+    const assignedSubjectsCount = assignments.length;
+
+    // 2. Total students count across assigned subjects
+    const subjectIds = assignments.map((a) => a.subject?._id || a.subject).filter(Boolean);
+    const enrollments = await Enrollment.find({ subject: { $in: subjectIds } }).distinct("student");
+    const totalStudentsCount = enrollments.length;
+
+    // 3. Today's classes / timetable
+    const timetable = await Timetable.find({ faculty: facultyId })
+      .populate("subject", "name code")
+      .populate("course", "name code");
+
+    // 4. Attendance count marked
+    const attendanceCount = await Attendance.countDocuments({ faculty: facultyId });
+
+    // 5. Unread notifications count & list
+    const notifications = await Notification.find({ recipient: facultyId })
+      .sort({ createdAt: -1 })
+      .limit(5);
+    const unreadNotificationsCount = await Notification.countDocuments({
+      recipient: facultyId,
+      isRead: false,
+    });
+
+    // 6. Events
+    const events = await Event.find({ isPublished: true }).sort({ startDate: 1 }).limit(4);
+
+    return res.status(200).json({
+      success: true,
+      message: "Faculty dashboard metrics fetched successfully",
+      data: {
+        metrics: {
+          assignedSubjectsCount,
+          totalStudentsCount,
+          todaysClassesCount: timetable.length,
+          pendingSubmissionsCount: 0,
+          attendanceCount,
+          unreadNotificationsCount,
+        },
+        assignments,
+        timetable,
+        events,
+        notifications,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
+  getDashboard,
   getAssignedSubjects,
   getStudents,
   getAttendance,

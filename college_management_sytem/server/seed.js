@@ -1,10 +1,10 @@
-const seedAdmin = require("./seed/seedAdmin");
+const seedFullData = require("./seed/seedFullData");
 
-seedAdmin()
+seedFullData()
   .then(() => {
     process.exit(0);
   })
   .catch((err) => {
     console.error("Seed failed:", err);
     process.exit(1);
-  });
+  });

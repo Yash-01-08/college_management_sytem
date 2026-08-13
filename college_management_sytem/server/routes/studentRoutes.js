@@ -3,6 +3,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/authorizeRoles");
 const {
   getProfile,
+  getDashboard,
   getCourses,
   getSubjects,
   getEnrollments,
@@ -21,6 +22,7 @@ router.use(authMiddleware);
 router.use(authorizeRoles("student"));
 
 router.get("/profile", getProfile);
+router.get("/dashboard", getDashboard);
 router.get("/courses", getCourses);
 router.get("/subjects", getSubjects);
 router.get("/enrollment", getEnrollments);
