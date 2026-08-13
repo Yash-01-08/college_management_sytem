@@ -494,6 +494,95 @@ async function runTests() {
   const resAdminDash = await request("GET", "/api/admin/dashboard", null, adminCookie);
   console.log("-> SUCCESS: Admin Dashboard metrics fetched. Total Users:", resAdminDash.body.data.metrics.totalStudents + resAdminDash.body.data.metrics.totalFaculty);
 
+  console.log("\n[TEST 10] Testing Phase 4 Assignment Creation & Security...");
+  const resCreateAssign = await request("POST", "/api/faculty/assignments", {
+    title: "Data Structures Project",
+    description: "Implement a Binary Search Tree",
+    subjectId: assignedSubjectObj._id,
+    deadline: "2026-12-31",
+    maxMarks: 100,
+  }, facultyCookie);
+  const createdAssignment = resCreateAssign.body.data.assignment;
+  console.log("-> SUCCESS: Faculty created assignment:", createdAssignment.title);
+
+  // Unauthorized faculty blocked
+  const resUnauthAssign = await request("POST", "/api/faculty/assignments", {
+    title: "Hacking Assignment",
+    description: "Unauthorized creation",
+    subjectId: assignedSubjectObj._id,
+    deadline: "2026-12-31",
+  }, unassignedFacultyCookie);
+  if (resUnauthAssign.status === 403) {
+    console.log("-> SUCCESS: Unauthorized faculty blocked from creating assignment (403)");
+  }
+
+  console.log("\n[TEST 11] Testing Student Assignment Submission...");
+  const resStudentAssignments = await request("GET", "/api/student/assignments", null, studentCookie);
+  console.log("-> SUCCESS: Student fetched assignments count:", resStudentAssignments.body.data.assignments.length);
+
+  const resSubmitAssign = await request("POST", `/api/student/assignments/${createdAssignment._id}/submit`, {
+    solutionText: "BST implementation completed in C++",
+    githubLink: "https://github.com/student/bst-impl",
+  }, studentCookie);
+  const studentSubmission = resSubmitAssign.body.data.submission;
+  console.log("-> SUCCESS: Student submitted assignment:", studentSubmission.status);
+
+  console.log("\n[TEST 12] Testing Faculty Review & Automatic Grading Notification...");
+  const resReview = await request("PUT", `/api/faculty/submissions/${studentSubmission._id}/review`, {
+    marksObtained: 95,
+    feedback: "Excellent BST implementation with clean memory management!",
+  }, facultyCookie);
+  console.log("-> SUCCESS: Faculty reviewed submission. Marks:", resReview.body.data.submission.marksObtained);
+
+  console.log("\n[TEST 13] Testing Phase 7 Announcements & Notification Broadcasting...");
+  const resAnnouncement = await request("POST", "/api/admin/announcements", {
+    title: "Mid-Term Exam Schedule Announced",
+    content: "The mid-term exam timetable is now published on the portal.",
+    targetRole: "student",
+    priority: "high",
+  }, adminCookie);
+  console.log("-> SUCCESS: Admin created announcement:", resAnnouncement.body.data.announcement.title);
+
+  console.log("\n[TEST 14] Testing Phase 9 Real MongoDB Analytics Aggregations...");
+  const resAnalytics = await request("GET", "/api/admin/analytics/overview", null, adminCookie);
+  console.log("-> SUCCESS: Admin fetched Analytics overview. Completion Rate:", resAnalytics.body.data.assignmentStats.completionRate + "%");
+
+  console.log("\n[TEST 15] Testing Notification Interactions (Read/Read-All/Delete)...");
+  const resStudentNotifs = await request("GET", "/api/student/notifications", null, studentCookie);
+  const targetNotifId = resStudentNotifs.body.data.notifications[0]._id;
+  
+  const resMarkRead = await request("PUT", `/api/student/notifications/${targetNotifId}/read`, null, studentCookie);
+  console.log("-> SUCCESS: Student marked notification as read:", resMarkRead.body.data.notification.isRead);
+
+  const resMarkAll = await request("PUT", "/api/student/notifications/read-all", null, studentCookie);
+  console.log("-> SUCCESS: Student marked all notifications as read:", resMarkAll.body.message);
+
+  const resDelNotif = await request("DELETE", `/api/student/notifications/${targetNotifId}`, null, studentCookie);
+  console.log("-> SUCCESS: Student deleted notification:", resDelNotif.body.message);
+
+  console.log("\n[TEST 16] Testing Granular Sub-Analytics Endpoints...");
+  const resAttAnalytics = await request("GET", "/api/admin/analytics/attendance", null, adminCookie);
+  console.log("-> SUCCESS: Admin fetched Attendance Analytics. Overall Pct:", resAttAnalytics.body.data.overallPercentage + "%");
+
+  const resPerfAnalytics = await request("GET", "/api/admin/analytics/performance", null, adminCookie);
+  console.log("-> SUCCESS: Admin fetched Performance Analytics. Pass Count:", resPerfAnalytics.body.data.passCount);
+
+  const resAssignAnalytics = await request("GET", "/api/admin/analytics/assignments", null, adminCookie);
+  console.log("-> SUCCESS: Admin fetched Assignment Analytics. Submissions:", resAssignAnalytics.body.data.totalSubmissions);
+
+  const resEvtAnalytics = await request("GET", "/api/admin/analytics/events", null, adminCookie);
+  console.log("-> SUCCESS: Admin fetched Event Analytics. Total Events:", resEvtAnalytics.body.data.totalEvents);
+
+  console.log("\n[TEST 17] Testing Coordinator Analytics Endpoints...");
+  const resCoordAnalytics = await request("GET", "/api/coordinator/analytics/overview", null, coordinatorCookie);
+  console.log("-> SUCCESS: Coordinator fetched Analytics Overview. Pass Pct:", resCoordAnalytics.body.data.passPercentage + "%");
+
+  const resCoordAtt = await request("GET", "/api/coordinator/analytics/attendance", null, coordinatorCookie);
+  console.log("-> SUCCESS: Coordinator fetched Attendance Analytics.");
+
+  const resCoordPerf = await request("GET", "/api/coordinator/analytics/performance", null, coordinatorCookie);
+  console.log("-> SUCCESS: Coordinator fetched Performance Analytics. Pass Count:", resCoordPerf.body.data.passCount);
+
   console.log("\n=======================================================");
   console.log("ALL TEST CASES PASSED SUCCESSFULLY!");
   console.log("=======================================================\n");
@@ -509,3 +598,4 @@ runTests().catch((err) => {
   mongoose.connection.close();
   process.exit(1);
 });
+

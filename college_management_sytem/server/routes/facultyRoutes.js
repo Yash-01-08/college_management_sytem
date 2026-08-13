@@ -15,6 +15,10 @@ const {
   getTimetable,
   getEvents,
   getNotifications,
+  createAssignment,
+  getFacultyAssignments,
+  getAssignmentSubmissions,
+  reviewSubmission,
 } = require("../controllers/facultyController");
 
 const router = express.Router();
@@ -26,6 +30,11 @@ router.get("/profile", getProfile);
 router.get("/dashboard", getDashboard);
 router.get("/subjects", getAssignedSubjects);
 router.get("/students", getStudents);
+
+router.get("/assignments", getFacultyAssignments);
+router.post("/assignments", createAssignment);
+router.get("/assignments/:id/submissions", getAssignmentSubmissions);
+router.put("/submissions/:id/review", reviewSubmission);
 
 router.get("/attendance", getAttendance);
 router.post("/attendance", markAttendance);

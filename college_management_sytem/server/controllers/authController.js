@@ -150,6 +150,7 @@ const login = async (req, res, next) => {
         { email: loginId.toLowerCase() },
       ],
     }).select("+password");
+console.log(user);
 
     if (!user) {
       return res.status(401).json({
@@ -169,7 +170,7 @@ const login = async (req, res, next) => {
     if (!isPasswordCorrect) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Invalid credentials wrong password",
       });
     }
 

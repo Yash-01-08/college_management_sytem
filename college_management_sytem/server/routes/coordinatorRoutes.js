@@ -35,6 +35,10 @@ const {
   deleteEvent,
   getNotifications,
   createNotification,
+  createAnnouncement,
+  getCoordinatorAnalyticsOverview,
+  getCoordinatorAttendanceAnalytics,
+  getCoordinatorPerformanceAnalytics,
 } = require("../controllers/coordinatorController");
 
 const router = express.Router();
@@ -44,6 +48,10 @@ router.use(authorizeRoles("coordinator", "admin"));
 
 router.get("/profile", getProfile);
 router.get("/dashboard", getDashboard);
+router.get("/analytics/overview", getCoordinatorAnalyticsOverview);
+router.get("/analytics/attendance", getCoordinatorAttendanceAnalytics);
+router.get("/analytics/performance", getCoordinatorPerformanceAnalytics);
+router.post("/announcements", createAnnouncement);
 
 router.get("/departments", getDepartments);
 router.post("/departments", createDepartment);

@@ -5,10 +5,14 @@ const Subject = require("../models/Subject");
 const Enrollment = require("../models/Enrollment");
 const TeachingAssignment = require("../models/TeachingAssignment");
 const Attendance = require("../models/Attendance");
+const Result = require("../models/Result");
 const Fee = require("../models/Fee");
 const Timetable = require("../models/Timetable");
 const Event = require("../models/Event");
 const Notification = require("../models/Notification");
+const Announcement = require("../models/Announcement");
+const Assignment = require("../models/Assignment");
+const AssignmentSubmission = require("../models/AssignmentSubmission");
 
 // GET /api/coordinator/profile
 const getProfile = async (req, res, next) => {
@@ -632,6 +636,155 @@ const getDashboard = async (req, res, next) => {
   }
 };
 
+// POST /api/coordinator/announcements
+const createAnnouncement = async (req, res, next) => {
+  try {
+    const { title, content, targetRole, targetDepartment, targetCourse, priority, expiresAt } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and content are required",
+      });
+    }
+
+    const announcement = await Announcement.create({
+      title,
+      content,
+      createdBy: req.user._id,
+      targetRole: targetRole || "all",
+      targetDepartment: targetDepartment || req.user.department || null,
+      targetCourse: targetCourse || null,
+      priority: priority || "normal",
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+    });
+
+    const userQuery = { isActive: true };
+    if (targetRole && targetRole !== "all") {
+      userQuery.role = targetRole;
+    }
+    if (announcement.targetDepartment) {
+      userQuery.department = announcement.targetDepartment;
+    }
+
+    const targetUsers = await User.find(userQuery).select("_id");
+    for (const u of targetUsers) {
+      await Notification.create({
+        recipient: u._id,
+        title: `Announcement: ${title}`,
+        message: content,
+        type: "announcement",
+        referenceId: announcement._id,
+      }).catch(() => {});
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Announcement created successfully",
+      data: { announcement },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/coordinator/analytics/overview
+const getCoordinatorAnalyticsOverview = async (req, res, next) => {
+  try {
+    const deptFilter = req.user.department ? { department: req.user.department } : {};
+
+    const totalStudents = await User.countDocuments({ role: "student", ...deptFilter });
+    const totalFaculty = await User.countDocuments({ role: "faculty", ...deptFilter });
+    const totalSubjects = await Subject.countDocuments(deptFilter);
+
+    const subjects = await Subject.find(deptFilter).select("_id");
+    const subjectIds = subjects.map((s) => s._id);
+
+    const totalAttendance = await Attendance.countDocuments({ subject: { $in: subjectIds } });
+    const presentAttendance = await Attendance.countDocuments({ subject: { $in: subjectIds }, status: "present" });
+    const attendancePercentage = totalAttendance > 0 ? Math.round((presentAttendance / totalAttendance) * 100) : 100;
+
+    const passCount = await Result.countDocuments({ subject: { $in: subjectIds }, status: "pass" });
+    const totalResults = await Result.countDocuments({ subject: { $in: subjectIds } });
+    const passPercentage = totalResults > 0 ? Math.round((passCount / totalResults) * 100) : 100;
+
+    return res.status(200).json({
+      success: true,
+      message: "Coordinator analytics overview fetched successfully",
+      data: {
+        totalStudents,
+        totalFaculty,
+        totalSubjects,
+        attendancePercentage,
+        passPercentage,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/coordinator/analytics/attendance
+const getCoordinatorAttendanceAnalytics = async (req, res, next) => {
+  try {
+    const deptFilter = req.user.department ? { department: req.user.department } : {};
+    const subjects = await Subject.find(deptFilter).select("_id");
+    const subjectIds = subjects.map((s) => s._id);
+
+    const monthly = await Attendance.aggregate([
+      { $match: { subject: { $in: subjectIds } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$date" } },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Coordinator attendance analytics fetched successfully",
+      data: { monthly },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/coordinator/analytics/performance
+const getCoordinatorPerformanceAnalytics = async (req, res, next) => {
+  try {
+    const deptFilter = req.user.department ? { department: req.user.department } : {};
+    const subjects = await Subject.find(deptFilter).select("_id");
+    const subjectIds = subjects.map((s) => s._id);
+
+    const gradeDistribution = await Result.aggregate([
+      { $match: { subject: { $in: subjectIds } } },
+      {
+        $group: {
+          _id: "$grade",
+          count: { $sum: 1 },
+          avgMarks: { $avg: "$totalMarks" },
+        },
+      },
+    ]);
+
+    const passCount = await Result.countDocuments({ subject: { $in: subjectIds }, status: "pass" });
+    const failCount = await Result.countDocuments({ subject: { $in: subjectIds }, status: "fail" });
+    const backlogCount = await Result.countDocuments({ subject: { $in: subjectIds }, status: "backlog" });
+
+    return res.status(200).json({
+      success: true,
+      message: "Coordinator performance analytics fetched successfully",
+      data: { passCount, failCount, backlogCount, gradeDistribution },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   getDashboard,
@@ -666,4 +819,10 @@ module.exports = {
   deleteEvent,
   getNotifications,
   createNotification,
+  createAnnouncement,
+  getCoordinatorAnalyticsOverview,
+  getCoordinatorAttendanceAnalytics,
+  getCoordinatorPerformanceAnalytics,
 };
+
+

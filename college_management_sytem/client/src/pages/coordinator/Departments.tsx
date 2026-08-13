@@ -36,7 +36,7 @@ export const CoordinatorDepartments: React.FC = () => {
       setLoading(true);
       setError(null);
       const res = await getCoordinatorDepartments();
-      console.log(res);
+      // console.log(res);
       setDepartments(res.data || []);
     } catch (err: any) {
       setError(err.message || "Failed to load departments.");

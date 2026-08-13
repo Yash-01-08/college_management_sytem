@@ -1,12 +1,15 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const TeachingAssignment = require("../models/TeachingAssignment");
+const Subject = require("../models/Subject");
 const Enrollment = require("../models/Enrollment");
 const Attendance = require("../models/Attendance");
 const Result = require("../models/Result");
 const Timetable = require("../models/Timetable");
 const Event = require("../models/Event");
 const Notification = require("../models/Notification");
+const Assignment = require("../models/Assignment");
+const AssignmentSubmission = require("../models/AssignmentSubmission");
 
 // GET /api/faculty/profile
 const getProfile = async (req, res, next) => {
@@ -407,6 +410,14 @@ const getDashboard = async (req, res, next) => {
     // 6. Events
     const events = await Event.find({ isPublished: true }).sort({ startDate: 1 }).limit(4);
 
+    // 7. Pending Submissions
+    const facultyAssignments = await Assignment.find({ faculty: facultyId });
+    const assignmentIds = facultyAssignments.map((a) => a._id);
+    const pendingSubmissionsCount = await AssignmentSubmission.countDocuments({
+      assignment: { $in: assignmentIds },
+      status: { $in: ["submitted", "late"] },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Faculty dashboard metrics fetched successfully",
@@ -415,7 +426,7 @@ const getDashboard = async (req, res, next) => {
           assignedSubjectsCount,
           totalStudentsCount,
           todaysClassesCount: timetable.length,
-          pendingSubmissionsCount: 0,
+          pendingSubmissionsCount,
           attendanceCount,
           unreadNotificationsCount,
         },
@@ -424,6 +435,179 @@ const getDashboard = async (req, res, next) => {
         events,
         notifications,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/faculty/assignments
+const createAssignment = async (req, res, next) => {
+  try {
+    const { title, description, subjectId, courseId, semester, academicYear, deadline, maxMarks, rubric } = req.body;
+
+    if (!title || !description || !subjectId || !deadline) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, description, subjectId, and deadline are required",
+      });
+    }
+
+    const isAssigned = await TeachingAssignment.findOne({
+      faculty: req.user._id,
+      subject: subjectId,
+    });
+
+    if (!isAssigned) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to create assignments for this subject",
+      });
+    }
+
+    const subjectObj = await Subject.findById(subjectId);
+    const courseIdFinal = courseId || subjectObj?.course || isAssigned.course;
+    const semesterFinal = semester || subjectObj?.semester || isAssigned.semester || 1;
+    const academicYearFinal = academicYear || isAssigned.academicYear || "2024-2025";
+
+    const assignment = await Assignment.create({
+      title,
+      description,
+      subject: subjectId,
+      course: courseIdFinal,
+      faculty: req.user._id,
+      semester: semesterFinal,
+      academicYear: academicYearFinal,
+      deadline: new Date(deadline),
+      maxMarks: maxMarks || 100,
+      rubric: rubric || "",
+      status: "published",
+    });
+
+    const enrollments = await Enrollment.find({ subject: subjectId, status: "active" });
+    for (const e of enrollments) {
+      await Notification.create({
+        recipient: e.student,
+        title: "New Assignment Published",
+        message: `A new assignment "${title}" has been published. Deadline: ${new Date(deadline).toLocaleDateString()}.`,
+        type: "announcement",
+        referenceId: assignment._id,
+      }).catch(() => {});
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Assignment created successfully",
+      data: { assignment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/assignments
+const getFacultyAssignments = async (req, res, next) => {
+  try {
+    const assignments = await Assignment.find({ faculty: req.user._id })
+      .populate("subject", "name code")
+      .populate("course", "name code")
+      .sort({ createdAt: -1 });
+
+    const assignmentsWithSubmissions = await Promise.all(
+      assignments.map(async (a) => {
+        const submissionCount = await AssignmentSubmission.countDocuments({ assignment: a._id });
+        return {
+          ...a.toObject(),
+          submissionCount,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Faculty assignments fetched successfully",
+      data: { assignments: assignmentsWithSubmissions },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/faculty/assignments/:id/submissions
+const getAssignmentSubmissions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const assignment = await Assignment.findById(id).populate("subject", "name code");
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    if (String(assignment.faculty) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to view submissions for this assignment",
+      });
+    }
+
+    const submissions = await AssignmentSubmission.find({ assignment: id })
+      .populate("student", "name email scholarNumber department course semester")
+      .sort({ submittedAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Submissions fetched successfully",
+      data: { assignment, submissions },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/faculty/submissions/:id/review
+const reviewSubmission = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { marksObtained, feedback } = req.body;
+
+    const submission = await AssignmentSubmission.findById(id).populate("assignment");
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: "Submission not found",
+      });
+    }
+
+    if (String(submission.assignment.faculty) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to review this submission",
+      });
+    }
+
+    submission.marksObtained = marksObtained !== undefined ? Number(marksObtained) : submission.marksObtained;
+    submission.feedback = feedback !== undefined ? feedback : submission.feedback;
+    submission.status = "reviewed";
+    submission.reviewedAt = new Date();
+    submission.reviewedBy = req.user._id;
+
+    await submission.save();
+
+    await Notification.create({
+      recipient: submission.student,
+      title: "Assignment Graded",
+      message: `Your submission for "${submission.assignment.title}" has been graded: ${submission.marksObtained}/${submission.assignment.maxMarks}`,
+      type: "result",
+      referenceId: submission._id,
+    }).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: "Submission reviewed successfully",
+      data: { submission },
     });
   } catch (error) {
     next(error);
@@ -444,4 +628,9 @@ module.exports = {
   getTimetable,
   getEvents,
   getNotifications,
+  createAssignment,
+  getFacultyAssignments,
+  getAssignmentSubmissions,
+  reviewSubmission,
 };
+

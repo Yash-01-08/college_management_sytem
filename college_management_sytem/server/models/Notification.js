@@ -20,8 +20,19 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: {
-        values: ["attendance", "result", "fee", "event", "announcement", "system"],
-        message: "Notification type must be attendance, result, fee, event, announcement, or system",
+        values: [
+          "attendance",
+          "result",
+          "fee",
+          "event",
+          "announcement",
+          "system",
+          "assignment_due",
+          "assignment_graded",
+          "event_created",
+          "fee_due",
+        ],
+        message: "Invalid notification type",
       },
       required: [true, "Notification type is required"],
     },

@@ -46,7 +46,7 @@ export const Sidebar: React.FC = () => {
     window.location.href = "/login";
   };
 
-  return (
+  return (  
     <aside className="w-64 shrink-0 hidden md:block">
       <div className="sticky top-20 glass-card p-4 space-y-6">
         {/* User Card */}

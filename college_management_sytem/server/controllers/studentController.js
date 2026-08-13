@@ -9,6 +9,9 @@ const Timetable = require("../models/Timetable");
 const Fee = require("../models/Fee");
 const Event = require("../models/Event");
 const Notification = require("../models/Notification");
+const Announcement = require("../models/Announcement");
+const Assignment = require("../models/Assignment");
+const AssignmentSubmission = require("../models/AssignmentSubmission");
 
 // GET /api/student/profile
 const getProfile = async (req, res, next) => {
@@ -261,6 +264,87 @@ const getNotifications = async (req, res, next) => {
   }
 };
 
+// PUT /api/student/notifications/:id/read
+const markNotificationRead = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const notification = await Notification.findOne({ _id: id, recipient: req.user._id });
+    if (!notification) {
+      return res.status(404).json({ success: false, message: "Notification not found" });
+    }
+
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Notification marked as read",
+      data: { notification },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/student/notifications/read-all
+const markAllNotificationsRead = async (req, res, next) => {
+  try {
+    await Notification.updateMany(
+      { recipient: req.user._id, isRead: false },
+      { $set: { isRead: true, readAt: new Date() } }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "All notifications marked as read",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/student/notifications/:id
+const deleteNotification = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const notification = await Notification.findOneAndDelete({ _id: id, recipient: req.user._id });
+    if (!notification) {
+      return res.status(404).json({ success: false, message: "Notification not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Notification deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/student/announcements
+const getAnnouncements = async (req, res, next) => {
+  try {
+    const announcements = await Announcement.find({
+      $or: [
+        { targetRole: "all" },
+        { targetRole: "student" },
+        { targetDepartment: req.user.department },
+      ],
+    })
+      .populate("createdBy", "name role")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Announcements fetched successfully",
+      data: { announcements },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getDashboard = async (req, res, next) => {
   try {
     const studentId = req.user._id;
@@ -313,6 +397,17 @@ const getDashboard = async (req, res, next) => {
     }
     const events = await Event.find(eventsFilter).sort({ startDate: 1 }).limit(4);
 
+    // Calculate pending assignments count for student's subjects
+    const enrollments = await Enrollment.find({ student: studentId, status: "active" });
+    const enrolledSubjectIds = enrollments.map((e) => e.subject);
+    const totalAssignments = await Assignment.find({ subject: { $in: enrolledSubjectIds }, status: "published" });
+    const submittedAssignments = await AssignmentSubmission.find({
+      student: studentId,
+      assignment: { $in: totalAssignments.map((a) => a._id) },
+    }).distinct("assignment");
+
+    const pendingAssignmentsCount = Math.max(0, totalAssignments.length - submittedAssignments.length);
+
     return res.status(200).json({
       success: true,
       message: "Student dashboard metrics fetched successfully",
@@ -320,7 +415,7 @@ const getDashboard = async (req, res, next) => {
         metrics: {
           attendancePercentage,
           currentSemester: req.user.semester || 1,
-          pendingAssignmentsCount: 0,
+          pendingAssignmentsCount,
           upcomingEventsCount: events.length,
           outstandingFees,
           unreadNotificationsCount,
@@ -330,6 +425,153 @@ const getDashboard = async (req, res, next) => {
         events,
         notifications,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/student/assignments
+const getStudentAssignments = async (req, res, next) => {
+  try {
+    const enrollments = await Enrollment.find({ student: req.user._id, status: "active" });
+    const enrolledSubjectIds = enrollments.map((e) => e.subject);
+
+    const assignments = await Assignment.find({
+      $or: [
+        { subject: { $in: enrolledSubjectIds } },
+        { course: req.user.course, semester: req.user.semester },
+      ],
+      status: "published",
+    })
+      .populate("subject", "name code")
+      .populate("faculty", "name email")
+      .sort({ deadline: 1 });
+
+    const assignmentIds = assignments.map((a) => a._id);
+    const submissions = await AssignmentSubmission.find({
+      student: req.user._id,
+      assignment: { $in: assignmentIds },
+    });
+
+    const submissionMap = new Map();
+    submissions.forEach((sub) => {
+      submissionMap.set(String(sub.assignment), sub);
+    });
+
+    const studentAssignments = assignments.map((a) => {
+      const sub = submissionMap.get(String(a._id));
+      return {
+        ...a.toObject(),
+        submissionStatus: sub ? sub.status : new Date() > new Date(a.deadline) ? "overdue" : "pending",
+        submission: sub || null,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Student assignments fetched successfully",
+      data: { assignments: studentAssignments },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/student/assignments/:id
+const getAssignmentSubmission = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const assignment = await Assignment.findById(id)
+      .populate("subject", "name code")
+      .populate("faculty", "name email");
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    const submission = await AssignmentSubmission.findOne({
+      assignment: id,
+      student: req.user._id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Assignment details fetched successfully",
+      data: { assignment, submission: submission || null },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/student/assignments/:id/submit
+const submitAssignment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { solutionText, githubLink, fileName, fileUrl } = req.body;
+
+    const assignment = await Assignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    const now = new Date();
+    const isLate = now > new Date(assignment.deadline);
+
+    let submission = await AssignmentSubmission.findOne({
+      assignment: id,
+      student: req.user._id,
+    });
+
+    if (submission) {
+      submission.solutionText = solutionText || submission.solutionText;
+      submission.githubLink = githubLink || submission.githubLink;
+      if (fileName || fileUrl) {
+        submission.file = {
+          name: fileName || submission.file.name,
+          url: fileUrl || submission.file.url,
+        };
+      }
+      submission.submittedAt = now;
+      submission.isLate = isLate;
+      submission.status = isLate ? "late" : "submitted";
+      await submission.save();
+    } else {
+      submission = await AssignmentSubmission.create({
+        assignment: id,
+        student: req.user._id,
+        solutionText: solutionText || "",
+        githubLink: githubLink || "",
+        file: {
+          name: fileName || "",
+          url: fileUrl || "",
+        },
+        submittedAt: now,
+        isLate,
+        status: isLate ? "late" : "submitted",
+      });
+    }
+
+    // Automatic notification to faculty
+    await Notification.create({
+      recipient: assignment.faculty,
+      title: "New Assignment Submission",
+      message: `Student ${req.user.name} submitted assignment "${assignment.title}".`,
+      type: "system",
+      referenceId: submission._id,
+    }).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: isLate ? "Assignment submitted late" : "Assignment submitted successfully",
+      data: { submission },
     });
   } catch (error) {
     next(error);
@@ -349,4 +591,12 @@ module.exports = {
   getFees,
   getEvents,
   getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  getAnnouncements,
+  getStudentAssignments,
+  getAssignmentSubmission,
+  submitAssignment,
 };
+

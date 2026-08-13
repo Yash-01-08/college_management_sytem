@@ -49,6 +49,12 @@ const {
   getNotifications,
   createNotification,
   deleteNotification,
+  getAnalyticsOverview,
+  createAnnouncement,
+  getAttendanceAnalytics,
+  getPerformanceAnalytics,
+  getAssignmentAnalytics,
+  getEventAnalytics,
 } = require("../controllers/adminController");
 
 const router = express.Router();
@@ -56,8 +62,14 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(authorizeRoles("admin"));
 
-// Dashboard
+// Dashboard & Analytics
 router.get("/dashboard", getDashboard);
+router.get("/analytics/overview", getAnalyticsOverview);
+router.get("/analytics/attendance", getAttendanceAnalytics);
+router.get("/analytics/performance", getPerformanceAnalytics);
+router.get("/analytics/assignments", getAssignmentAnalytics);
+router.get("/analytics/events", getEventAnalytics);
+router.post("/announcements", createAnnouncement);
 
 // Users
 router.get("/users", getUsers);
