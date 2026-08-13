@@ -1,5 +1,6 @@
 import api from "./api";
 import { User, Department, Course, Subject, Enrollment, FacultyAssignment, TimetableSlot, Event, Notification, ApiResponse } from "../types";
+import { wrapNormalizedList } from "../utils/responseHelper";
 
 export const getCoordinatorProfile = async (): Promise<ApiResponse<User>> => {
   try {
@@ -26,7 +27,7 @@ export const getCoordinatorProfile = async (): Promise<ApiResponse<User>> => {
 export const getCoordinatorDepartments = async (): Promise<ApiResponse<Department[]>> => {
   try {
     const res = await api.get("/coordinator/departments");
-    return res.data;
+    return wrapNormalizedList<Department>(res.data, "departments");
   } catch {
     return {
       success: true,
@@ -58,7 +59,7 @@ export const deleteCoordinatorDepartment = async (id: string): Promise<ApiRespon
 export const getCoordinatorCourses = async (): Promise<ApiResponse<Course[]>> => {
   try {
     const res = await api.get("/coordinator/courses");
-    return res.data;
+    return wrapNormalizedList<Course>(res.data, "courses");
   } catch {
     return {
       success: true,
@@ -89,7 +90,7 @@ export const deleteCoordinatorCourse = async (id: string): Promise<ApiResponse> 
 export const getCoordinatorSubjects = async (): Promise<ApiResponse<Subject[]>> => {
   try {
     const res = await api.get("/coordinator/subjects");
-    return res.data;
+    return wrapNormalizedList<Subject>(res.data, "subjects");
   } catch {
     return {
       success: true,
@@ -121,7 +122,7 @@ export const deleteCoordinatorSubject = async (id: string): Promise<ApiResponse>
 export const getCoordinatorEnrollments = async (): Promise<ApiResponse<Enrollment[]>> => {
   try {
     const res = await api.get("/coordinator/enrollments");
-    return res.data;
+    return wrapNormalizedList<Enrollment>(res.data, "enrollments");
   } catch {
     return {
       success: true,
@@ -147,7 +148,7 @@ export const updateCoordinatorEnrollment = async (id: string, payload: Partial<E
 export const getCoordinatorAssignments = async (): Promise<ApiResponse<FacultyAssignment[]>> => {
   try {
     const res = await api.get("/coordinator/assignments");
-    return res.data;
+    return wrapNormalizedList<FacultyAssignment>(res.data, "assignments");
   } catch {
     return {
       success: true,
@@ -178,7 +179,7 @@ export const deleteCoordinatorAssignment = async (id: string): Promise<ApiRespon
 export const getCoordinatorStudents = async (): Promise<ApiResponse<User[]>> => {
   try {
     const res = await api.get("/coordinator/students");
-    return res.data;
+    return wrapNormalizedList<User>(res.data, "students");
   } catch {
     return {
       success: true,
@@ -193,7 +194,7 @@ export const getCoordinatorStudents = async (): Promise<ApiResponse<User[]>> => 
 export const getCoordinatorFaculty = async (): Promise<ApiResponse<User[]>> => {
   try {
     const res = await api.get("/coordinator/faculty");
-    return res.data;
+    return wrapNormalizedList<User>(res.data, "faculty");
   } catch {
     return {
       success: true,
@@ -209,7 +210,7 @@ export const getCoordinatorFaculty = async (): Promise<ApiResponse<User[]>> => {
 export const getCoordinatorTimetable = async (): Promise<ApiResponse<TimetableSlot[]>> => {
   try {
     const res = await api.get("/coordinator/timetable");
-    return res.data;
+    return wrapNormalizedList<TimetableSlot>(res.data, "timetable");
   } catch {
     return {
       success: true,
@@ -239,7 +240,7 @@ export const deleteCoordinatorTimetable = async (id: string): Promise<ApiRespons
 export const getCoordinatorEvents = async (): Promise<ApiResponse<Event[]>> => {
   try {
     const res = await api.get("/coordinator/events");
-    return res.data;
+    return wrapNormalizedList<Event>(res.data, "events");
   } catch {
     return {
       success: true,
@@ -269,7 +270,7 @@ export const deleteCoordinatorEvent = async (id: string): Promise<ApiResponse> =
 export const getCoordinatorNotifications = async (): Promise<ApiResponse<Notification[]>> => {
   try {
     const res = await api.get("/coordinator/notifications");
-    return res.data;
+    return wrapNormalizedList<Notification>(res.data, "notifications");
   } catch {
     return {
       success: true,

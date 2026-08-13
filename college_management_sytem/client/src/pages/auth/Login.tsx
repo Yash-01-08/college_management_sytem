@@ -38,7 +38,7 @@ export const Login: React.FC = () => {
     setError(null);
 
     if (!email.trim() || !password) {
-      setError("Please fill in email and password.");
+      setError("Please fill in login ID and password.");
       return;
     }
 
@@ -125,16 +125,16 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          {/* Email */}
+          {/* Identifier (Phone / Scholar Number / Email) */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1.5">
-              Email Address
+              Phone / Scholar Number / Email
             </label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@college.edu"
+              placeholder="Phone number, Scholar number, or Email"
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-950/80 border border-gray-200 dark:border-slate-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all"
               required
             />

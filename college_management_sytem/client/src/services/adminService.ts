@@ -1,11 +1,12 @@
 import api from "./api";
 import { User, Department, Course, Subject, Enrollment, FacultyAssignment, Attendance, Result, TimetableSlot, Fee, Event, Notification, ApiResponse } from "../types";
+import { wrapNormalizedList } from "../utils/responseHelper";
 
 // User Management APIs
 export const getAdminUsers = async (roleFilter?: string): Promise<ApiResponse<User[]>> => {
   try {
     const res = await api.get("/admin/users", { params: { role: roleFilter } });
-    return res.data;
+    return wrapNormalizedList<User>(res.data, "users");
   } catch {
     return {
       success: true,
@@ -38,7 +39,7 @@ export const deleteAdminUser = async (id: string): Promise<ApiResponse> => {
 export const getAdminDepartments = async (): Promise<ApiResponse<Department[]>> => {
   try {
     const res = await api.get("/admin/departments");
-    return res.data;
+    return wrapNormalizedList<Department>(res.data, "departments");
   } catch {
     return {
       success: true,
@@ -70,7 +71,7 @@ export const deleteAdminDepartment = async (id: string): Promise<ApiResponse> =>
 export const getAdminCourses = async (): Promise<ApiResponse<Course[]>> => {
   try {
     const res = await api.get("/admin/courses");
-    return res.data;
+    return wrapNormalizedList<Course>(res.data, "courses");
   } catch {
     return {
       success: true,
@@ -101,7 +102,7 @@ export const deleteAdminCourse = async (id: string): Promise<ApiResponse> => {
 export const getAdminSubjects = async (): Promise<ApiResponse<Subject[]>> => {
   try {
     const res = await api.get("/admin/subjects");
-    return res.data;
+    return wrapNormalizedList<Subject>(res.data, "subjects");
   } catch {
     return {
       success: true,
@@ -132,7 +133,7 @@ export const deleteAdminSubject = async (id: string): Promise<ApiResponse> => {
 export const getAdminEnrollments = async (): Promise<ApiResponse<Enrollment[]>> => {
   try {
     const res = await api.get("/admin/enrollments");
-    return res.data;
+    return wrapNormalizedList<Enrollment>(res.data, "enrollments");
   } catch {
     return {
       success: true,
@@ -162,7 +163,7 @@ export const deleteAdminEnrollment = async (id: string): Promise<ApiResponse> =>
 export const getAdminAssignments = async (): Promise<ApiResponse<FacultyAssignment[]>> => {
   try {
     const res = await api.get("/admin/assignments");
-    return res.data;
+    return wrapNormalizedList<FacultyAssignment>(res.data, "assignments");
   } catch {
     return {
       success: true,
@@ -192,7 +193,7 @@ export const deleteAdminAssignment = async (id: string): Promise<ApiResponse> =>
 export const getAdminAttendance = async (): Promise<ApiResponse<Attendance[]>> => {
   try {
     const res = await api.get("/admin/attendance");
-    return res.data;
+    return wrapNormalizedList<Attendance>(res.data, "attendance");
   } catch {
     return {
       success: true,
@@ -217,7 +218,7 @@ export const deleteAdminAttendance = async (id: string): Promise<ApiResponse> =>
 export const getAdminResults = async (): Promise<ApiResponse<Result[]>> => {
   try {
     const res = await api.get("/admin/results");
-    return res.data;
+    return wrapNormalizedList<Result>(res.data, "results");
   } catch {
     return {
       success: true,
@@ -247,7 +248,7 @@ export const deleteAdminResult = async (id: string): Promise<ApiResponse> => {
 export const getAdminTimetable = async (): Promise<ApiResponse<TimetableSlot[]>> => {
   try {
     const res = await api.get("/admin/timetable");
-    return res.data;
+    return wrapNormalizedList<TimetableSlot>(res.data, "timetable");
   } catch {
     return {
       success: true,
@@ -277,7 +278,7 @@ export const deleteAdminTimetable = async (id: string): Promise<ApiResponse> => 
 export const getAdminFees = async (): Promise<ApiResponse<Fee[]>> => {
   try {
     const res = await api.get("/admin/fees");
-    return res.data;
+    return wrapNormalizedList<Fee>(res.data, "fees");
   } catch {
     return {
       success: true,
@@ -308,7 +309,7 @@ export const deleteAdminFee = async (id: string): Promise<ApiResponse> => {
 export const getAdminEvents = async (): Promise<ApiResponse<Event[]>> => {
   try {
     const res = await api.get("/admin/events");
-    return res.data;
+    return wrapNormalizedList<Event>(res.data, "events");
   } catch {
     return {
       success: true,
@@ -338,7 +339,7 @@ export const deleteAdminEvent = async (id: string): Promise<ApiResponse> => {
 export const getAdminNotifications = async (): Promise<ApiResponse<Notification[]>> => {
   try {
     const res = await api.get("/admin/notifications");
-    return res.data;
+    return wrapNormalizedList<Notification>(res.data, "notifications");
   } catch {
     return {
       success: true,

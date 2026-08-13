@@ -1,5 +1,6 @@
 import api from "./api";
 import { User, Subject, Attendance, Result, TimetableSlot, Event, Notification, ApiResponse } from "../types";
+import { wrapNormalizedList } from "../utils/responseHelper";
 
 export const getFacultyProfile = async (): Promise<ApiResponse<User>> => {
   try {
@@ -27,7 +28,7 @@ export const getFacultyProfile = async (): Promise<ApiResponse<User>> => {
 export const getFacultySubjects = async (): Promise<ApiResponse<Subject[]>> => {
   try {
     const res = await api.get("/faculty/subjects");
-    return res.data;
+    return wrapNormalizedList<Subject>(res.data, "assignments");
   } catch {
     return {
       success: true,
@@ -42,7 +43,7 @@ export const getFacultySubjects = async (): Promise<ApiResponse<Subject[]>> => {
 export const getFacultyStudents = async (subjectId?: string): Promise<ApiResponse<User[]>> => {
   try {
     const res = await api.get("/faculty/students", { params: { subjectId } });
-    return res.data;
+    return wrapNormalizedList<User>(res.data, "enrollments");
   } catch {
     return {
       success: true,
@@ -59,72 +60,54 @@ export const getFacultyStudents = async (subjectId?: string): Promise<ApiRespons
 export const getFacultyAttendance = async (): Promise<ApiResponse<Attendance[]>> => {
   try {
     const res = await api.get("/faculty/attendance");
-    return res.data;
+    return wrapNormalizedList<Attendance>(res.data, "attendance");
   } catch {
     return {
       success: true,
       data: [
-        { id: "att10", subjectName: "Data Structures & Algorithms", subjectCode: "CS401", date: "2026-08-12", totalStudents: 40, presentCount: 36, absentCount: 3, lateCount: 1, records: [] },
+        { id: "att1", subjectName: "Data Structures & Algorithms", subjectCode: "CS401", date: "2026-08-12", totalStudents: 40, presentCount: 36, absentCount: 3, lateCount: 1, records: [] },
       ],
     };
   }
 };
 
-export const createFacultyAttendance = async (payload: {
-  subjectId: string;
-  date: string;
-  records: { studentId: string; status: "Present" | "Absent" | "Late" }[];
-}): Promise<ApiResponse<Attendance>> => {
+export const markFacultyAttendance = async (payload: Partial<Attendance>): Promise<ApiResponse<Attendance>> => {
   const res = await api.post("/faculty/attendance", payload);
   return res.data;
 };
 
-export const updateFacultyAttendance = async (id: string, payload: any): Promise<ApiResponse<Attendance>> => {
-  const res = await api.put(`/faculty/attendance/${id}`, payload);
-  return res.data;
-};
+export const createFacultyAttendance = markFacultyAttendance;
 
 export const getFacultyResults = async (): Promise<ApiResponse<Result[]>> => {
   try {
     const res = await api.get("/faculty/results");
-    return res.data;
+    return wrapNormalizedList<Result>(res.data, "results");
   } catch {
     return {
       success: true,
       data: [
-        { id: "r10", studentName: "Alex Johnson", scholarNumber: "SCH2024-0089", subjectName: "Data Structures", subjectCode: "CS401", semester: 4, internalMarks: 28, externalMarks: 62, totalMarks: 90, grade: "A+", gradePoint: 10, status: "Pass" },
-        { id: "r11", studentName: "Brenda Vance", scholarNumber: "SCH2024-0090", subjectName: "Data Structures", subjectCode: "CS401", semester: 4, internalMarks: 22, externalMarks: 50, totalMarks: 72, grade: "B+", gradePoint: 8, status: "Pass" },
+        { id: "r1", studentName: "Alex Johnson", scholarNumber: "SCH2024-0089", subjectName: "Data Structures", subjectCode: "CS401", semester: 4, internalMarks: 28, externalMarks: 62, totalMarks: 90, grade: "A+", gradePoint: 10, status: "Pass" },
       ],
     };
   }
 };
 
-export const createFacultyResult = async (payload: {
-  studentId: string;
-  subjectId: string;
-  semester: number;
-  internalMarks: number;
-  externalMarks: number;
-}): Promise<ApiResponse<Result>> => {
+export const submitFacultyResult = async (payload: Partial<Result>): Promise<ApiResponse<Result>> => {
   const res = await api.post("/faculty/results", payload);
   return res.data;
 };
 
-export const updateFacultyResult = async (id: string, payload: any): Promise<ApiResponse<Result>> => {
-  const res = await api.put(`/faculty/results/${id}`, payload);
-  return res.data;
-};
+export const createFacultyResult = submitFacultyResult;
 
 export const getFacultyTimetable = async (): Promise<ApiResponse<TimetableSlot[]>> => {
   try {
     const res = await api.get("/faculty/timetable");
-    return res.data;
+    return wrapNormalizedList<TimetableSlot>(res.data, "timetable");
   } catch {
     return {
       success: true,
       data: [
-        { id: "ft1", courseName: "B.Tech CSE", subjectName: "Data Structures & Algorithms", subjectCode: "CS401", facultyName: "Dr. Robert Smith", semester: 4, day: "Monday", startTime: "09:00 AM", endTime: "10:00 AM", room: "LH-101", type: "Theory" },
-        { id: "ft2", courseName: "B.Tech CSE", subjectName: "Advanced Algorithms Lab", subjectCode: "CS401L", facultyName: "Dr. Robert Smith", semester: 4, day: "Wednesday", startTime: "02:00 PM", endTime: "04:00 PM", room: "Lab-1", type: "Lab" },
+        { id: "ft1", courseName: "B.Tech CSE", subjectName: "Data Structures", subjectCode: "CS401", facultyName: "Dr. Robert Smith", semester: 4, day: "Monday", startTime: "09:00 AM", endTime: "10:00 AM", room: "LH-101", type: "Theory" },
       ],
     };
   }
@@ -133,12 +116,12 @@ export const getFacultyTimetable = async (): Promise<ApiResponse<TimetableSlot[]
 export const getFacultyEvents = async (): Promise<ApiResponse<Event[]>> => {
   try {
     const res = await api.get("/faculty/events");
-    return res.data;
+    return wrapNormalizedList<Event>(res.data, "events");
   } catch {
     return {
       success: true,
       data: [
-        { id: "fe1", title: "Faculty Curriculum Committee Meeting", description: "Reviewing updated syllabus for 2026-2027.", type: "Academic", startDate: "2026-08-18", endDate: "2026-08-18", venue: "Conference Room A", published: true },
+        { id: "ev1", title: "Annual Hackathon 2026", description: "48-hour inter-college coding marathon.", type: "Academic", startDate: "2026-09-10", endDate: "2026-09-12", venue: "Main Auditorium", published: true, department: "Computer Science" },
       ],
     };
   }
@@ -147,12 +130,12 @@ export const getFacultyEvents = async (): Promise<ApiResponse<Event[]>> => {
 export const getFacultyNotifications = async (): Promise<ApiResponse<Notification[]>> => {
   try {
     const res = await api.get("/faculty/notifications");
-    return res.data;
+    return wrapNormalizedList<Notification>(res.data, "notifications");
   } catch {
     return {
       success: true,
       data: [
-        { id: "fn1", title: "Internal Marks Submission Deadline", message: "Please submit mid-term internal evaluation marks by Aug 20.", type: "Announcement", read: false, createdAt: "2026-08-11T09:00:00Z" },
+        { id: "fn1", title: "Grade Submission Deadline", message: "Submit mid-sem internal marks by Friday.", type: "Academic", read: false, createdAt: "2026-08-11T09:00:00Z" },
       ],
     };
   }

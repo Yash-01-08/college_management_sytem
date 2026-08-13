@@ -132,7 +132,8 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, identifier, password, role: requestedRole } = req.body;
-    const loginId = email || identifier;
+    const rawId = email || identifier || req.body.loginId || "";
+    const loginId = String(rawId).trim();
 
     if (!loginId || !password) {
       return res.status(400).json({
@@ -141,14 +142,12 @@ const login = async (req, res, next) => {
       });
     }
 
-    const trimmedIdentifier = String(loginId).trim().toLowerCase();
-
-    // Query user by email, phone, or scholarNumber
+    // Query user by phone, scholarNumber, or email
     const user = await User.findOne({
       $or: [
-        { email: trimmedIdentifier },
         { phone: loginId },
         { scholarNumber: loginId },
+        { email: loginId.toLowerCase() },
       ],
     }).select("+password");
 

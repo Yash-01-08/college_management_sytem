@@ -36,7 +36,9 @@ export function Table<T extends Record<string, any>>({
     );
   }
 
-  if (!data || data.length === 0) {
+  const safeData = Array.isArray(data) ? data : [];
+
+  if (safeData.length === 0) {
     return (
       <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
         <EmptyState title={emptyTitle} message={emptyMessage} />
@@ -73,7 +75,7 @@ export function Table<T extends Record<string, any>>({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-          {data.map((row, rIdx) => (
+          {safeData.map((row, rIdx) => (
             <tr
               key={keyExtractor(row, rIdx)}
               className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"

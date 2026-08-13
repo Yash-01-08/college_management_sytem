@@ -1,11 +1,12 @@
 import api from "./api";
 import { User, Course, Subject, Enrollment, Attendance, Result, TimetableSlot, Fee, Event, Notification, ApiResponse } from "../types";
+import { wrapNormalizedList } from "../utils/responseHelper";
 
 export const getStudentProfile = async (): Promise<ApiResponse<User>> => {
   try {
     const res = await api.get("/student/profile");
     return res.data;
-  } catch (error) {
+  } catch {
     return {
       success: true,
       data: {
@@ -29,7 +30,7 @@ export const getStudentProfile = async (): Promise<ApiResponse<User>> => {
 export const getStudentCourses = async (): Promise<ApiResponse<Course[]>> => {
   try {
     const res = await api.get("/student/courses");
-    return res.data;
+    return wrapNormalizedList<Course>(res.data, "courses");
   } catch {
     return {
       success: true,
@@ -51,7 +52,7 @@ export const getStudentCourses = async (): Promise<ApiResponse<Course[]>> => {
 export const getStudentSubjects = async (): Promise<ApiResponse<Subject[]>> => {
   try {
     const res = await api.get("/student/subjects");
-    return res.data;
+    return wrapNormalizedList<Subject>(res.data, "subjects");
   } catch {
     return {
       success: true,
@@ -69,7 +70,7 @@ export const getStudentSubjects = async (): Promise<ApiResponse<Subject[]>> => {
 export const getStudentEnrollments = async (): Promise<ApiResponse<Enrollment[]>> => {
   try {
     const res = await api.get("/student/enrollment");
-    return res.data;
+    return wrapNormalizedList<Enrollment>(res.data, "enrollments");
   } catch {
     return {
       success: true,
@@ -91,7 +92,7 @@ export const createStudentEnrollment = async (payload: { subjectId: string }): P
 export const getStudentAttendance = async (): Promise<ApiResponse<Attendance[]>> => {
   try {
     const res = await api.get("/student/attendance");
-    return res.data;
+    return wrapNormalizedList<Attendance>(res.data, "attendance");
   } catch {
     return {
       success: true,
@@ -109,7 +110,7 @@ export const getStudentAttendance = async (): Promise<ApiResponse<Attendance[]>>
 export const getStudentResults = async (): Promise<ApiResponse<Result[]>> => {
   try {
     const res = await api.get("/student/results");
-    return res.data;
+    return wrapNormalizedList<Result>(res.data, "results");
   } catch {
     return {
       success: true,
@@ -125,7 +126,7 @@ export const getStudentResults = async (): Promise<ApiResponse<Result[]>> => {
 export const getStudentTimetable = async (): Promise<ApiResponse<TimetableSlot[]>> => {
   try {
     const res = await api.get("/student/timetable");
-    return res.data;
+    return wrapNormalizedList<TimetableSlot>(res.data, "timetable");
   } catch {
     return {
       success: true,
@@ -143,13 +144,12 @@ export const getStudentTimetable = async (): Promise<ApiResponse<TimetableSlot[]
 export const getStudentFees = async (): Promise<ApiResponse<Fee[]>> => {
   try {
     const res = await api.get("/student/fees");
-    return res.data;
+    return wrapNormalizedList<Fee>(res.data, "fees");
   } catch {
     return {
       success: true,
       data: [
-        { id: "f1", title: "Semester 4 Tuition Fee", academicYear: "2025-2026", semester: 4, totalAmount: 45000, paidAmount: 45000, dueAmount: 0, dueDate: "2026-01-31", status: "Paid" },
-        { id: "f2", title: "Library & Lab Examination Fee", academicYear: "2025-2026", semester: 4, totalAmount: 5000, paidAmount: 2500, dueAmount: 2500, dueDate: "2026-08-30", status: "Partial" },
+        { id: "f1", studentName: "Alex Johnson", scholarNumber: "SCH2024-0089", title: "Semester 4 Tuition Fee", academicYear: "2025-2026", semester: 4, totalAmount: 45000, paidAmount: 45000, dueAmount: 0, dueDate: "2026-01-31", status: "Paid" },
       ],
     };
   }
@@ -158,13 +158,12 @@ export const getStudentFees = async (): Promise<ApiResponse<Fee[]>> => {
 export const getStudentEvents = async (): Promise<ApiResponse<Event[]>> => {
   try {
     const res = await api.get("/student/events");
-    return res.data;
+    return wrapNormalizedList<Event>(res.data, "events");
   } catch {
     return {
       success: true,
       data: [
         { id: "ev1", title: "Annual Hackathon 2026", description: "48-hour inter-college coding marathon.", type: "Academic", startDate: "2026-09-10", endDate: "2026-09-12", venue: "Main Auditorium", published: true, department: "Computer Science" },
-        { id: "ev2", title: "Tech Fest Workshops", description: "Hands-on AI & Cloud Computing Bootcamp.", type: "Workshop", startDate: "2026-09-20", endDate: "2026-09-21", venue: "Seminar Hall 2", published: true, department: "All Departments" },
       ],
     };
   }
@@ -173,13 +172,12 @@ export const getStudentEvents = async (): Promise<ApiResponse<Event[]>> => {
 export const getStudentNotifications = async (): Promise<ApiResponse<Notification[]>> => {
   try {
     const res = await api.get("/student/notifications");
-    return res.data;
+    return wrapNormalizedList<Notification>(res.data, "notifications");
   } catch {
     return {
       success: true,
       data: [
-        { id: "n1", title: "Attendance Warning", message: "Operating Systems attendance is currently at 75%. Please attend upcoming classes.", type: "Attendance", read: false, createdAt: "2026-08-12T10:30:00Z" },
-        { id: "n2", title: "Mid-Term Results Out", message: "Results for Data Structures & Algorithms have been published.", type: "Result", read: true, createdAt: "2026-08-10T14:15:00Z" },
+        { id: "sn1", title: "Mid-Semester Examination Schedule", message: "Exams begin from 20th September.", type: "Exam", read: false, createdAt: "2026-08-10T10:00:00Z" },
       ],
     };
   }
