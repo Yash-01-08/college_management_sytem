@@ -1,12 +1,16 @@
 import axios from "axios";
 
+declare const process: any;
+
 const getBaseUrl = (): string => {
-  const envUrl = (
-    import.meta.env.VITE_API_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    "http://localhost:5000/api"
-  ).replace(/\/+$/, "");
-  return envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
+  let envUrl = "";
+  if (typeof process !== "undefined" && process?.env?.NEXT_PUBLIC_API_URL) {
+    envUrl = process.env.NEXT_PUBLIC_API_URL;
+  } else if (typeof import.meta !== "undefined" && (import.meta as any).env && (import.meta as any).env.NEXT_PUBLIC_API_URL) {
+    envUrl = (import.meta as any).env.NEXT_PUBLIC_API_URL;
+  }
+  envUrl = (envUrl || "http://localhost:5000").replace(/\/+$/, "");
+  return envUrl.endsWith("/api") ? envUrl.slice(0, -4) : envUrl;
 };
 
 // Single Centralized Axios Instance
@@ -16,6 +20,16 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+// Request interceptor to ensure all endpoints have /api prefix without duplicating
+api.interceptors.request.use((config) => {
+  if (config.url && !config.url.startsWith("http://") && !config.url.startsWith("https://")) {
+    if (!config.url.startsWith("/api/") && config.url !== "/api") {
+      config.url = `/api${config.url.startsWith("/") ? "" : "/"}${config.url}`;
+    }
+  }
+  return config;
 });
 
 // Response interceptor for centralized error handling

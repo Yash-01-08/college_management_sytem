@@ -27,7 +27,12 @@ export async function apiRequest<T = any>(
       config.body = JSON.stringify(options.body);
     }
 
-    const res = await fetch(endpoint, config);
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "");
+    const cleanBaseUrl = baseUrl.endsWith("/api") ? baseUrl.slice(0, -4) : baseUrl;
+    const path = endpoint.startsWith("/api") ? endpoint : `/api${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+    const fullUrl = endpoint.startsWith("http://") || endpoint.startsWith("https://") ? endpoint : `${cleanBaseUrl}${path}`;
+
+    const res = await fetch(fullUrl, config);
     const result = await res.json();
 
     if (!res.ok) {

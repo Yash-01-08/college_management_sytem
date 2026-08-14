@@ -25,7 +25,8 @@ export default function PlacementsPage() {
   }, [user?.id]);
 
   const handleApply = async (p: PlacementNotice) => {
-    const res = await fetch("/api/placements", {
+    const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+    const res = await fetch(`${apiOrigin}/api/placements`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

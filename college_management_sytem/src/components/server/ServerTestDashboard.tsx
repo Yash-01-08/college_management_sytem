@@ -70,9 +70,10 @@ export const ServerTestDashboard: React.FC = () => {
     const startTime = performance.now();
     try {
       // Axios GET request to backend health check
+      const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
       let res;
       try {
-        res = await axios.get("http://localhost:5000/api/health", { timeout: 3000 });
+        res = await axios.get(`${apiOrigin}/api/health`, { timeout: 3000 });
       } catch {
         res = await axios.get("/api/health", { timeout: 3000 });
       }
@@ -103,9 +104,10 @@ export const ServerTestDashboard: React.FC = () => {
   // Fetch file structure from Node.js backend using Axios
   const fetchFileStructure = async () => {
     try {
+      const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
       let res;
       try {
-        res = await axios.get("http://localhost:5000/api/file-structure", { timeout: 3000 });
+        res = await axios.get(`${apiOrigin}/api/file-structure`, { timeout: 3000 });
       } catch {
         res = await axios.get("/api/file-structure", { timeout: 3000 });
       }
@@ -135,9 +137,10 @@ export const ServerTestDashboard: React.FC = () => {
         parsedBody = { rawText: testPayload };
       }
 
+      const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
       let res;
       try {
-        res = await axios.post("http://localhost:5000/api/server-test", parsedBody, {
+        res = await axios.post(`${apiOrigin}/api/server-test`, parsedBody, {
           headers: { "Content-Type": "application/json" },
           timeout: 4000,
         });
@@ -170,9 +173,11 @@ export const ServerTestDashboard: React.FC = () => {
     setEndpointLoading(true);
     const startTime = performance.now();
     try {
+      const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
       let res;
       try {
-        res = await axios.get(`http://localhost:5000${pathStr}`, { timeout: 4000 });
+        const fullEndpoint = pathStr.startsWith("/api") ? pathStr : `/api${pathStr.startsWith("/") ? "" : "/"}${pathStr}`;
+        res = await axios.get(`${apiOrigin}${fullEndpoint}`, { timeout: 4000 });
       } catch {
         res = await axios.get(pathStr, { timeout: 4000 });
       }

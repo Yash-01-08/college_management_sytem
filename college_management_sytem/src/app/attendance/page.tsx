@@ -30,7 +30,8 @@ export default function AttendancePage() {
   const isFaculty = user?.role === "FACULTY" || user?.role === "ADMIN";
 
   const handleCreateSession = async () => {
-    const res = await fetch("/api/attendance", {
+    const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+    const res = await fetch(`${apiOrigin}/api/attendance`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -55,7 +56,8 @@ export default function AttendancePage() {
     setSuccessMsg("");
 
     const tokenToUse = qrToken || activeSession?.qrCodeToken;
-    const res = await fetch("/api/attendance", {
+    const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+    const res = await fetch(`${apiOrigin}/api/attendance`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

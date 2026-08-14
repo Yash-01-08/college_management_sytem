@@ -49,7 +49,8 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
       // Send message to Node.js AI backend or generate smart assistant response
       let responseText = "";
       try {
-        const res = await axios.post("/api/ai-chat", { query: currentInput }, { timeout: 3000 });
+        const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+        const res = await axios.post(`${apiOrigin}/api/ai-chat`, { query: currentInput }, { timeout: 3000 });
         responseText = res.data.response || res.data.message;
       } catch {
         // Fallback intelligent responses

@@ -29,7 +29,8 @@ export default function EventsPage() {
   const isCoordinator = user?.role === "COORDINATOR" || user?.role === "ADMIN";
 
   const handleRegisterEvent = async (evt: EventItem) => {
-    const res = await fetch("/api/events", {
+    const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+    const res = await fetch(`${apiOrigin}/api/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
