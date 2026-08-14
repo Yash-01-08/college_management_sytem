@@ -39,7 +39,8 @@ export default function AssignmentsPage() {
 
   const handlePublishAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/assignments", {
+    const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+    const res = await fetch(`${apiOrigin}/api/assignments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -64,7 +65,8 @@ export default function AssignmentsPage() {
   const handleSubmitSolution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAssignment) return;
-    const res = await fetch("/api/assignments", {
+    const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+    const res = await fetch(`${apiOrigin}/api/assignments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -89,7 +91,8 @@ export default function AssignmentsPage() {
   const handleGradeSubmission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSub) return;
-    const res = await fetch("/api/assignments", {
+    const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "").replace(/\/api$/, "");
+    const res = await fetch(`${apiOrigin}/api/assignments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
